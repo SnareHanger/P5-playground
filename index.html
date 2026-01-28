@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>p5.js Shape Editor</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <h1>p5.js Shape Editor</h1>
+    <div id="main">
+      <div id="canvas-container"></div>
+      <div id="controls">
+        <fieldset>
+          <legend>Shape</legend>
+          <label for="shape-select">Primitive</label>
+          <select id="shape-select">
+            <option value="rectangle">Rectangle</option>
+            <option value="ellipse">Ellipse</option>
+            <option value="triangle">Triangle</option>
+            <option value="line">Line</option>
+            <option value="quad">Quad</option>
+            <option value="arc">Arc</option>
+            <option value="point">Point</option>
+          </select>
+        </fieldset>
+
+        <fieldset>
+          <legend>Position</legend>
+          <div class="control-row">
+            <label for="pos-x">X</label>
+            <input type="range" id="pos-x" min="0" max="400" value="200">
+            <span id="pos-x-val" class="value-display">200</span>
+          </div>
+          <div class="control-row">
+            <label for="pos-y">Y</label>
+            <input type="range" id="pos-y" min="0" max="400" value="200">
+            <span id="pos-y-val" class="value-display">200</span>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Dimensions</legend>
+          <div class="control-row">
+            <label for="dim-w">Width</label>
+            <input type="range" id="dim-w" min="1" max="400" value="100">
+            <span id="dim-w-val" class="value-display">100</span>
+          </div>
+          <div class="control-row">
+            <label for="dim-h">Height</label>
+            <input type="range" id="dim-h" min="1" max="400" value="100">
+            <span id="dim-h-val" class="value-display">100</span>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Style</legend>
+          <div class="control-row">
+            <label for="fill-color">Fill</label>
+            <input type="color" id="fill-color" value="#4a90d9">
+          </div>
+          <div class="control-row">
+            <label for="stroke-color">Stroke</label>
+            <input type="color" id="stroke-color" value="#333333">
+          </div>
+          <div class="control-row">
+            <label for="stroke-weight">Stroke Weight</label>
+            <input type="range" id="stroke-weight" min="0" max="20" value="2">
+            <span id="stroke-weight-val" class="value-display">2</span>
+          </div>
+        </fieldset>
+      </div>
+    </div>
+  </div>
+  <script src="sketch.js"></script>
+</body>
+</html>
