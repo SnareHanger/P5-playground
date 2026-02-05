@@ -4,6 +4,7 @@ let shapeSelect;
 let posX, posY;
 let dimW, dimH;
 let fillColor, strokeColor, strokeW;
+let arcStart, arcStop, arcMode;
 
 function setup() {
   const canvas = createCanvas(CANVAS_SIZE, CANVAS_SIZE);
@@ -19,20 +20,61 @@ function setup() {
   strokeColor = select('#stroke-color');
   strokeW = select('#stroke-weight');
 
+  arcStart = select('#arc-start');
+  arcStop = select('#arc-stop');
+  arcMode = select('#arc-mode');
+
   // Wire up value displays for range inputs
   wireSlider('pos-x', 'pos-x-val');
   wireSlider('pos-y', 'pos-y-val');
   wireSlider('dim-w', 'dim-w-val');
   wireSlider('dim-h', 'dim-h-val');
   wireSlider('stroke-weight', 'stroke-weight-val');
+  wireSlider('arc-start', 'arc-start-val', '°');
+  wireSlider('arc-stop', 'arc-stop-val', '°');
+
+  // Update UI when shape changes
+  shapeSelect.changed(updateControlsVisibility);
+  updateControlsVisibility();
 }
 
-function wireSlider(sliderId, displayId) {
+function wireSlider(sliderId, displayId, suffix = '') {
   const slider = document.getElementById(sliderId);
   const display = document.getElementById(displayId);
   slider.addEventListener('input', () => {
-    display.textContent = slider.value;
+    display.textContent = slider.value + suffix;
   });
+}
+
+function updateControlsVisibility() {
+  const shape = shapeSelect.value();
+
+  const dimensionsFieldset = document.getElementById('dimensions-fieldset');
+  const arcFieldset = document.getElementById('arc-fieldset');
+  const fillRow = document.getElementById('fill-row');
+
+  // Default: show dimensions, hide arc, show fill
+  dimensionsFieldset.style.display = 'block';
+  arcFieldset.style.display = 'none';
+  fillRow.style.display = 'flex';
+
+  switch (shape) {
+    case 'point':
+      // Point only needs position
+      dimensionsFieldset.style.display = 'none';
+      fillRow.style.display = 'none';
+      break;
+
+    case 'line':
+      // Line doesn't have fill
+      fillRow.style.display = 'none';
+      break;
+
+    case 'arc':
+      // Arc needs angle controls
+      arcFieldset.style.display = 'block';
+      break;
+  }
 }
 
 function draw() {
@@ -94,9 +136,13 @@ function draw() {
       break;
     }
 
-    case 'arc':
-      arc(x, y, w, h, 0, PI + QUARTER_PI, PIE);
+    case 'arc': {
+      const startAngle = radians(Number(arcStart.value()));
+      const stopAngle = radians(Number(arcStop.value()));
+      const mode = window[arcMode.value()]; // PIE, CHORD, or OPEN
+      arc(x, y, w, h, startAngle, stopAngle, mode);
       break;
+    }
 
     case 'point': {
       const prevWeight = Number(strokeW.value());
