@@ -41,6 +41,12 @@ function setup() {
 
   shapeSelect.changed(onShapeChanged);
   updateControlsVisibility();
+
+  document.getElementById('freeform-reset').addEventListener('click', resetFreeform);
+}
+
+function resetFreeform() {
+  initFreeformAsRectangle();
 }
 
 function wireSlider(sliderId, displayId, suffix = '') {
@@ -87,10 +93,12 @@ function initFreeformAsRectangle() {
 }
 
 function updateControlsVisibility() {
-  const config = shapeControls[shapeSelect.value()];
+  const shape = shapeSelect.value();
+  const config = shapeControls[shape];
   document.getElementById('dimensions-fieldset').style.display = config.dimensions ? 'block' : 'none';
   document.getElementById('arc-fieldset').style.display = config.arc ? 'block' : 'none';
   document.getElementById('fill-row').style.display = config.fill ? 'flex' : 'none';
+  document.getElementById('freeform-fieldset').style.display = shape === 'freeform' ? 'block' : 'none';
 }
 
 function getAnchors(shape, x, y, w, h) {

@@ -115,6 +115,26 @@ input[type="color"] {
   margin-top: 0;
 }
 
+button {
+  width: 100%;
+  padding: 8px 12px;
+  margin-top: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background: #f0f0f0;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+button:hover {
+  background: #e0e0e0;
+}
+
+button:active {
+  background: #d0d0d0;
+}
+
 @media (max-width: 700px) {
   #main {
     flex-direction: column;
