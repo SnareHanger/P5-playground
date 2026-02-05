@@ -1,17 +1,13 @@
 const CANVAS_SIZE = 400;
 
-let shapeSelect;
-let posX, posY;
-let dimW, dimH;
+let shapeSelect, posX, posY, dimW, dimH;
 let fillColor, strokeColor, strokeW;
-let arcStart, arcStop, arcMode;
+let arcStart, arcStop, arcModeSelect;
 
 function setup() {
-  const canvas = createCanvas(CANVAS_SIZE, CANVAS_SIZE);
-  canvas.parent('canvas-container');
+  createCanvas(CANVAS_SIZE, CANVAS_SIZE).parent('canvas-container');
 
   shapeSelect = select('#shape-select');
-
   posX = select('#pos-x');
   posY = select('#pos-y');
   dimW = select('#dim-w');
@@ -19,12 +15,10 @@ function setup() {
   fillColor = select('#fill-color');
   strokeColor = select('#stroke-color');
   strokeW = select('#stroke-weight');
-
   arcStart = select('#arc-start');
   arcStop = select('#arc-stop');
-  arcMode = select('#arc-mode');
+  arcModeSelect = select('#arc-mode');
 
-  // Wire up value displays for range inputs
   wireSlider('pos-x', 'pos-x-val');
   wireSlider('pos-y', 'pos-y-val');
   wireSlider('dim-w', 'dim-w-val');
@@ -33,7 +27,6 @@ function setup() {
   wireSlider('arc-start', 'arc-start-val', '°');
   wireSlider('arc-stop', 'arc-stop-val', '°');
 
-  // Update UI when shape changes
   shapeSelect.changed(updateControlsVisibility);
   updateControlsVisibility();
 }
@@ -48,54 +41,37 @@ function wireSlider(sliderId, displayId, suffix = '') {
 
 function updateControlsVisibility() {
   const shape = shapeSelect.value();
-
   const dimensionsFieldset = document.getElementById('dimensions-fieldset');
   const arcFieldset = document.getElementById('arc-fieldset');
   const fillRow = document.getElementById('fill-row');
 
-  // Default: show dimensions, hide arc, show fill
-  dimensionsFieldset.style.display = 'block';
-  arcFieldset.style.display = 'none';
-  fillRow.style.display = 'flex';
-
-  switch (shape) {
-    case 'point':
-      // Point only needs position
-      dimensionsFieldset.style.display = 'none';
-      fillRow.style.display = 'none';
-      break;
-
-    case 'line':
-      // Line doesn't have fill
-      fillRow.style.display = 'none';
-      break;
-
-    case 'arc':
-      // Arc needs angle controls
-      arcFieldset.style.display = 'block';
-      break;
-  }
+  dimensionsFieldset.style.display = shape === 'point' ? 'none' : 'block';
+  arcFieldset.style.display = shape === 'arc' ? 'block' : 'none';
+  fillRow.style.display = (shape === 'point' || shape === 'line') ? 'none' : 'flex';
 }
 
 function draw() {
   background(240);
-
-  // Draw grid
   drawGrid();
 
-  // Read control values
   const x = Number(posX.value());
   const y = Number(posY.value());
   const w = Number(dimW.value());
   const h = Number(dimH.value());
   const shape = shapeSelect.value();
 
-  // Apply style
   fill(fillColor.value());
   stroke(strokeColor.value());
   strokeWeight(Number(strokeW.value()));
 
-  // Draw the selected primitive
+  drawShape(shape, x, y, w, h);
+  drawCrosshair(x, y);
+}
+
+function drawShape(shape, x, y, w, h) {
+  const hw = w / 2;
+  const hh = h / 2;
+
   switch (shape) {
     case 'rectangle':
       rectMode(CENTER);
@@ -106,55 +82,27 @@ function draw() {
       ellipse(x, y, w, h);
       break;
 
-    case 'triangle': {
-      const halfW = w / 2;
-      const halfH = h / 2;
-      triangle(
-        x, y - halfH,
-        x - halfW, y + halfH,
-        x + halfW, y + halfH
-      );
+    case 'triangle':
+      triangle(x, y - hh, x - hw, y + hh, x + hw, y + hh);
       break;
-    }
 
-    case 'line': {
-      const hw = w / 2;
-      const hh = h / 2;
+    case 'line':
       line(x - hw, y - hh, x + hw, y + hh);
       break;
-    }
 
-    case 'quad': {
-      const qw = w / 2;
-      const qh = h / 2;
-      quad(
-        x, y - qh,
-        x + qw, y,
-        x, y + qh,
-        x - qw, y
-      );
+    case 'quad':
+      quad(x, y - hh, x + hw, y, x, y + hh, x - hw, y);
       break;
-    }
 
-    case 'arc': {
-      const startAngle = radians(Number(arcStart.value()));
-      const stopAngle = radians(Number(arcStop.value()));
-      const mode = window[arcMode.value()]; // PIE, CHORD, or OPEN
-      arc(x, y, w, h, startAngle, stopAngle, mode);
+    case 'arc':
+      arc(x, y, w, h, radians(Number(arcStart.value())), radians(Number(arcStop.value())), window[arcModeSelect.value()]);
       break;
-    }
 
-    case 'point': {
-      const prevWeight = Number(strokeW.value());
-      strokeWeight(max(prevWeight, 8));
+    case 'point':
+      strokeWeight(max(Number(strokeW.value()), 8));
       point(x, y);
-      strokeWeight(prevWeight);
       break;
-    }
   }
-
-  // Draw crosshair at shape position
-  drawCrosshair(x, y);
 }
 
 function drawGrid() {
@@ -165,7 +113,6 @@ function drawGrid() {
     line(0, i, CANVAS_SIZE, i);
   }
 
-  // Axis labels
   noStroke();
   fill(180);
   textSize(10);
