@@ -64,10 +64,13 @@ function updateControlsVisibility() {
 function getAnchors(shape, x, y, w, h) {
   const hw = w / 2;
   const hh = h / 2;
+  const startAngle = radians(Number(arcStart.value()));
+  const stopAngle = radians(Number(arcStop.value()));
 
   switch (shape) {
     case 'rectangle':
       return [
+        { x: x, y: y, role: 'center' },
         { x: x - hw, y: y - hh, role: 'topLeft' },
         { x: x + hw, y: y - hh, role: 'topRight' },
         { x: x + hw, y: y + hh, role: 'bottomRight' },
@@ -76,6 +79,7 @@ function getAnchors(shape, x, y, w, h) {
 
     case 'ellipse':
       return [
+        { x: x, y: y, role: 'center' },
         { x: x, y: y - hh, role: 'top' },
         { x: x + hw, y: y, role: 'right' },
         { x: x, y: y + hh, role: 'bottom' },
@@ -84,6 +88,7 @@ function getAnchors(shape, x, y, w, h) {
 
     case 'triangle':
       return [
+        { x: x, y: y, role: 'center' },
         { x: x, y: y - hh, role: 'top' },
         { x: x - hw, y: y + hh, role: 'bottomLeft' },
         { x: x + hw, y: y + hh, role: 'bottomRight' },
@@ -91,12 +96,14 @@ function getAnchors(shape, x, y, w, h) {
 
     case 'line':
       return [
+        { x: x, y: y, role: 'center' },
         { x: x - hw, y: y - hh, role: 'start' },
         { x: x + hw, y: y + hh, role: 'end' },
       ];
 
     case 'quad':
       return [
+        { x: x, y: y, role: 'center' },
         { x: x, y: y - hh, role: 'top' },
         { x: x + hw, y: y, role: 'right' },
         { x: x, y: y + hh, role: 'bottom' },
@@ -105,10 +112,13 @@ function getAnchors(shape, x, y, w, h) {
 
     case 'arc':
       return [
+        { x: x, y: y, role: 'center' },
         { x: x, y: y - hh, role: 'top' },
         { x: x + hw, y: y, role: 'right' },
         { x: x, y: y + hh, role: 'bottom' },
         { x: x - hw, y: y, role: 'left' },
+        { x: x + cos(startAngle) * hw, y: y + sin(startAngle) * hh, role: 'arcStart' },
+        { x: x + cos(stopAngle) * hw, y: y + sin(stopAngle) * hh, role: 'arcStop' },
       ];
 
     case 'point':
@@ -185,10 +195,20 @@ function drawAnchors(anchors) {
     const a = anchors[i];
     const isHovered = dist(mouseX, mouseY, a.x, a.y) < ANCHOR_HIT_RADIUS;
     const isDragged = draggedAnchor === i;
+    const isCenter = a.role === 'center';
+    const isArcAngle = a.role === 'arcStart' || a.role === 'arcStop';
 
     stroke(isDragged ? '#ff6600' : isHovered ? '#0066ff' : '#333');
     strokeWeight(2);
-    fill(isDragged ? '#ffcc00' : isHovered ? '#66aaff' : '#fff');
+
+    if (isCenter) {
+      fill(isDragged ? '#ffcc00' : isHovered ? '#66aaff' : '#90EE90');
+    } else if (isArcAngle) {
+      fill(isDragged ? '#ffcc00' : isHovered ? '#66aaff' : '#FFB6C1');
+    } else {
+      fill(isDragged ? '#ffcc00' : isHovered ? '#66aaff' : '#fff');
+    }
+
     ellipse(a.x, a.y, ANCHOR_SIZE, ANCHOR_SIZE);
   }
 }
@@ -243,12 +263,18 @@ function handleAnchorDrag(mx, my) {
   mx = constrain(mx, 0, CANVAS_SIZE);
   my = constrain(my, 0, CANVAS_SIZE);
 
-  switch (shape) {
-    case 'point':
-      updateSlider(posX, 'pos-x-val', mx);
-      updateSlider(posY, 'pos-y-val', my);
-      break;
+  if (anchor.role === 'center') {
+    updateSlider(posX, 'pos-x-val', mx);
+    updateSlider(posY, 'pos-y-val', my);
+    return;
+  }
 
+  if (anchor.role === 'arcStart' || anchor.role === 'arcStop') {
+    handleArcAngleDrag(anchor.role, mx, my, x, y);
+    return;
+  }
+
+  switch (shape) {
     case 'line':
       handleLineDrag(anchor.role, mx, my, x, y);
       break;
@@ -272,141 +298,96 @@ function handleAnchorDrag(mx, my) {
   }
 }
 
+function handleArcAngleDrag(role, mx, my, cx, cy) {
+  const angle = atan2(my - cy, mx - cx);
+  let degrees = angle * 180 / PI;
+  if (degrees < 0) degrees += 360;
+
+  if (role === 'arcStart') {
+    updateSlider(arcStart, 'arc-start-val', degrees, '°');
+  } else {
+    updateSlider(arcStop, 'arc-stop-val', degrees, '°');
+  }
+}
+
 function handleLineDrag(role, mx, my, cx, cy) {
   const w = Number(dimW.value());
   const h = Number(dimH.value());
 
   if (role === 'start') {
-    const endX = cx + w / 2;
-    const endY = cy + h / 2;
-    const newCx = (mx + endX) / 2;
-    const newCy = (my + endY) / 2;
-    const newW = Math.abs(endX - mx);
-    const newH = Math.abs(endY - my);
-    updateSlider(posX, 'pos-x-val', newCx);
-    updateSlider(posY, 'pos-y-val', newCy);
-    updateSlider(dimW, 'dim-w-val', Math.max(1, newW));
-    updateSlider(dimH, 'dim-h-val', Math.max(1, newH));
+    const newW = (cx - mx) * 2;
+    const newH = (cy - my) * 2;
+    updateSlider(dimW, 'dim-w-val', Math.max(1, Math.abs(newW)));
+    updateSlider(dimH, 'dim-h-val', Math.max(1, Math.abs(newH)));
   } else {
-    const startX = cx - w / 2;
-    const startY = cy - h / 2;
-    const newCx = (startX + mx) / 2;
-    const newCy = (startY + my) / 2;
-    const newW = Math.abs(mx - startX);
-    const newH = Math.abs(my - startY);
-    updateSlider(posX, 'pos-x-val', newCx);
-    updateSlider(posY, 'pos-y-val', newCy);
-    updateSlider(dimW, 'dim-w-val', Math.max(1, newW));
-    updateSlider(dimH, 'dim-h-val', Math.max(1, newH));
+    const newW = (mx - cx) * 2;
+    const newH = (my - cy) * 2;
+    updateSlider(dimW, 'dim-w-val', Math.max(1, Math.abs(newW)));
+    updateSlider(dimH, 'dim-h-val', Math.max(1, Math.abs(newH)));
   }
 }
 
 function handleRectDrag(role, mx, my, cx, cy) {
-  const w = Number(dimW.value());
-  const h = Number(dimH.value());
-  const hw = w / 2;
-  const hh = h / 2;
+  let newW, newH;
 
-  let left = cx - hw, right = cx + hw, top = cy - hh, bottom = cy + hh;
+  if (role === 'topLeft') {
+    newW = (cx - mx) * 2;
+    newH = (cy - my) * 2;
+  } else if (role === 'topRight') {
+    newW = (mx - cx) * 2;
+    newH = (cy - my) * 2;
+  } else if (role === 'bottomRight') {
+    newW = (mx - cx) * 2;
+    newH = (my - cy) * 2;
+  } else if (role === 'bottomLeft') {
+    newW = (cx - mx) * 2;
+    newH = (my - cy) * 2;
+  }
 
-  if (role.includes('top')) top = my;
-  if (role.includes('bottom')) bottom = my;
-  if (role.includes('Left')) left = mx;
-  if (role.includes('Right')) right = mx;
-
-  const newW = Math.abs(right - left);
-  const newH = Math.abs(bottom - top);
-  const newCx = (left + right) / 2;
-  const newCy = (top + bottom) / 2;
-
-  updateSlider(posX, 'pos-x-val', newCx);
-  updateSlider(posY, 'pos-y-val', newCy);
-  updateSlider(dimW, 'dim-w-val', Math.max(1, newW));
-  updateSlider(dimH, 'dim-h-val', Math.max(1, newH));
+  updateSlider(dimW, 'dim-w-val', Math.max(1, Math.abs(newW)));
+  updateSlider(dimH, 'dim-h-val', Math.max(1, Math.abs(newH)));
 }
 
 function handleEllipseDrag(role, mx, my, cx, cy) {
-  const w = Number(dimW.value());
-  const h = Number(dimH.value());
-
-  let newW = w, newH = h, newCx = cx, newCy = cy;
-
-  if (role === 'top' || role === 'bottom') {
-    const opposite = role === 'top' ? cy + h / 2 : cy - h / 2;
-    newH = Math.abs(my - opposite);
-    newCy = (my + opposite) / 2;
-  } else {
-    const opposite = role === 'left' ? cx + w / 2 : cx - w / 2;
-    newW = Math.abs(mx - opposite);
-    newCx = (mx + opposite) / 2;
+  if (role === 'top') {
+    updateSlider(dimH, 'dim-h-val', Math.max(1, Math.abs((cy - my) * 2)));
+  } else if (role === 'bottom') {
+    updateSlider(dimH, 'dim-h-val', Math.max(1, Math.abs((my - cy) * 2)));
+  } else if (role === 'left') {
+    updateSlider(dimW, 'dim-w-val', Math.max(1, Math.abs((cx - mx) * 2)));
+  } else if (role === 'right') {
+    updateSlider(dimW, 'dim-w-val', Math.max(1, Math.abs((mx - cx) * 2)));
   }
-
-  updateSlider(posX, 'pos-x-val', newCx);
-  updateSlider(posY, 'pos-y-val', newCy);
-  updateSlider(dimW, 'dim-w-val', Math.max(1, newW));
-  updateSlider(dimH, 'dim-h-val', Math.max(1, newH));
 }
 
 function handleTriangleDrag(role, mx, my, cx, cy) {
-  const w = Number(dimW.value());
-  const h = Number(dimH.value());
-  const hw = w / 2;
-  const hh = h / 2;
-
-  let topY = cy - hh;
-  let bottomY = cy + hh;
-  let leftX = cx - hw;
-  let rightX = cx + hw;
-
   if (role === 'top') {
-    topY = my;
-    const newCx = (leftX + rightX) / 2;
-    updateSlider(posX, 'pos-x-val', mx);
+    updateSlider(dimH, 'dim-h-val', Math.max(1, Math.abs((cy - my) * 2)));
   } else if (role === 'bottomLeft') {
-    leftX = mx;
-    bottomY = my;
+    updateSlider(dimW, 'dim-w-val', Math.max(1, Math.abs((cx - mx) * 2)));
+    updateSlider(dimH, 'dim-h-val', Math.max(1, Math.abs((my - cy) * 2)));
   } else if (role === 'bottomRight') {
-    rightX = mx;
-    bottomY = my;
+    updateSlider(dimW, 'dim-w-val', Math.max(1, Math.abs((mx - cx) * 2)));
+    updateSlider(dimH, 'dim-h-val', Math.max(1, Math.abs((my - cy) * 2)));
   }
-
-  const newW = Math.abs(rightX - leftX);
-  const newH = Math.abs(bottomY - topY);
-  const newCx = (leftX + rightX) / 2;
-  const newCy = (topY + bottomY) / 2;
-
-  updateSlider(posX, 'pos-x-val', newCx);
-  updateSlider(posY, 'pos-y-val', newCy);
-  updateSlider(dimW, 'dim-w-val', Math.max(1, newW));
-  updateSlider(dimH, 'dim-h-val', Math.max(1, newH));
 }
 
 function handleQuadDrag(role, mx, my, cx, cy) {
-  const w = Number(dimW.value());
-  const h = Number(dimH.value());
-
-  let newW = w, newH = h, newCx = cx, newCy = cy;
-
-  if (role === 'top' || role === 'bottom') {
-    const opposite = role === 'top' ? cy + h / 2 : cy - h / 2;
-    newH = Math.abs(my - opposite);
-    newCy = (my + opposite) / 2;
-  } else {
-    const opposite = role === 'left' ? cx + w / 2 : cx - w / 2;
-    newW = Math.abs(mx - opposite);
-    newCx = (mx + opposite) / 2;
+  if (role === 'top') {
+    updateSlider(dimH, 'dim-h-val', Math.max(1, Math.abs((cy - my) * 2)));
+  } else if (role === 'bottom') {
+    updateSlider(dimH, 'dim-h-val', Math.max(1, Math.abs((my - cy) * 2)));
+  } else if (role === 'left') {
+    updateSlider(dimW, 'dim-w-val', Math.max(1, Math.abs((cx - mx) * 2)));
+  } else if (role === 'right') {
+    updateSlider(dimW, 'dim-w-val', Math.max(1, Math.abs((mx - cx) * 2)));
   }
-
-  updateSlider(posX, 'pos-x-val', newCx);
-  updateSlider(posY, 'pos-y-val', newCy);
-  updateSlider(dimW, 'dim-w-val', Math.max(1, newW));
-  updateSlider(dimH, 'dim-h-val', Math.max(1, newH));
 }
 
-function updateSlider(slider, displayId, value) {
+function updateSlider(slider, displayId, value, suffix = '') {
   value = Math.round(value);
   slider.elt.value = value;
-  document.getElementById(displayId).textContent = value;
+  document.getElementById(displayId).textContent = value + suffix;
 }
 
 function drawGrid() {
