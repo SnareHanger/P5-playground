@@ -1,6 +1,8 @@
 const CANVAS_SIZE = 400;
 const ANCHOR_SIZE = 12;
 const ANCHOR_HIT_RADIUS = 15;
+const DOUBLE_CLICK_TIME = 300;
+const EDGE_HIT_DISTANCE = 10;
 
 let shapeSelect, posX, posY, dimW, dimH;
 let fillColor, strokeColor, strokeW;
@@ -8,6 +10,11 @@ let arcStart, arcStop, arcModeSelect;
 
 let draggedAnchor = null;
 let anchors = [];
+
+// Freeform shape vertices
+let freeformVertices = [];
+let lastClickTime = 0;
+let lastClickPos = { x: 0, y: 0 };
 
 function setup() {
   createCanvas(CANVAS_SIZE, CANVAS_SIZE).parent('canvas-container');
@@ -32,7 +39,7 @@ function setup() {
   wireSlider('arc-start', 'arc-start-val', '°');
   wireSlider('arc-stop', 'arc-stop-val', '°');
 
-  shapeSelect.changed(updateControlsVisibility);
+  shapeSelect.changed(onShapeChanged);
   updateControlsVisibility();
 }
 
@@ -45,14 +52,39 @@ function wireSlider(sliderId, displayId, suffix = '') {
 }
 
 const shapeControls = {
-  rectangle: { dimensions: true, arc: false, fill: true },
-  ellipse:   { dimensions: true, arc: false, fill: true },
-  triangle:  { dimensions: true, arc: false, fill: true },
-  quad:      { dimensions: true, arc: false, fill: true },
-  line:      { dimensions: true, arc: false, fill: false },
-  arc:       { dimensions: true, arc: true,  fill: true },
-  point:     { dimensions: false, arc: false, fill: false },
+  rectangle: { dimensions: true, arc: false, fill: true, position: true },
+  ellipse:   { dimensions: true, arc: false, fill: true, position: true },
+  triangle:  { dimensions: true, arc: false, fill: true, position: true },
+  quad:      { dimensions: true, arc: false, fill: true, position: true },
+  line:      { dimensions: true, arc: false, fill: false, position: true },
+  arc:       { dimensions: true, arc: true,  fill: true, position: true },
+  point:     { dimensions: false, arc: false, fill: false, position: true },
+  freeform:  { dimensions: false, arc: false, fill: true, position: false },
 };
+
+function onShapeChanged() {
+  const shape = shapeSelect.value();
+  if (shape === 'freeform' && freeformVertices.length === 0) {
+    initFreeformAsRectangle();
+  }
+  updateControlsVisibility();
+}
+
+function initFreeformAsRectangle() {
+  const x = Number(posX.value());
+  const y = Number(posY.value());
+  const w = Number(dimW.value());
+  const h = Number(dimH.value());
+  const hw = w / 2;
+  const hh = h / 2;
+
+  freeformVertices = [
+    { x: x - hw, y: y - hh },
+    { x: x + hw, y: y - hh },
+    { x: x + hw, y: y + hh },
+    { x: x - hw, y: y + hh },
+  ];
+}
 
 function updateControlsVisibility() {
   const config = shapeControls[shapeSelect.value()];
@@ -126,6 +158,9 @@ function getAnchors(shape, x, y, w, h) {
         { x: x, y: y, role: 'center' },
       ];
 
+    case 'freeform':
+      return freeformVertices.map((v, i) => ({ x: v.x, y: v.y, role: 'freeformVertex', index: i }));
+
     default:
       return [];
   }
@@ -150,7 +185,9 @@ function draw() {
   anchors = getAnchors(shape, x, y, w, h);
   drawAnchors(anchors);
 
-  drawCrosshair(x, y);
+  if (shape !== 'freeform') {
+    drawCrosshair(x, y);
+  }
 }
 
 function drawShape(shape, x, y, w, h) {
@@ -187,7 +224,21 @@ function drawShape(shape, x, y, w, h) {
       strokeWeight(max(Number(strokeW.value()), 8));
       point(x, y);
       break;
+
+    case 'freeform':
+      drawFreeform();
+      break;
   }
+}
+
+function drawFreeform() {
+  if (freeformVertices.length < 2) return;
+
+  beginShape();
+  for (const v of freeformVertices) {
+    vertex(v.x, v.y);
+  }
+  endShape(CLOSE);
 }
 
 function drawAnchors(anchors) {
@@ -197,6 +248,7 @@ function drawAnchors(anchors) {
     const isDragged = draggedAnchor === i;
     const isCenter = a.role === 'center';
     const isArcAngle = a.role === 'arcStart' || a.role === 'arcStop';
+    const isFreeformVertex = a.role === 'freeformVertex';
 
     stroke(isDragged ? '#ff6600' : isHovered ? '#0066ff' : '#333');
     strokeWeight(2);
@@ -205,6 +257,8 @@ function drawAnchors(anchors) {
       fill(isDragged ? '#ffcc00' : isHovered ? '#66aaff' : '#90EE90');
     } else if (isArcAngle) {
       fill(isDragged ? '#ffcc00' : isHovered ? '#66aaff' : '#FFB6C1');
+    } else if (isFreeformVertex) {
+      fill(isDragged ? '#ffcc00' : isHovered ? '#66aaff' : '#DDA0DD');
     } else {
       fill(isDragged ? '#ffcc00' : isHovered ? '#66aaff' : '#fff');
     }
@@ -222,8 +276,76 @@ function findAnchorAtPoint(px, py) {
   return null;
 }
 
+function pointToSegmentDistance(px, py, x1, y1, x2, y2) {
+  const A = px - x1;
+  const B = py - y1;
+  const C = x2 - x1;
+  const D = y2 - y1;
+
+  const dot = A * C + B * D;
+  const lenSq = C * C + D * D;
+  let t = lenSq !== 0 ? dot / lenSq : -1;
+
+  t = Math.max(0, Math.min(1, t));
+
+  const nearestX = x1 + t * C;
+  const nearestY = y1 + t * D;
+
+  return { dist: dist(px, py, nearestX, nearestY), t, nearestX, nearestY };
+}
+
+function findEdgeAtPoint(px, py) {
+  if (shapeSelect.value() !== 'freeform' || freeformVertices.length < 2) return null;
+
+  for (let i = 0; i < freeformVertices.length; i++) {
+    const v1 = freeformVertices[i];
+    const v2 = freeformVertices[(i + 1) % freeformVertices.length];
+    const result = pointToSegmentDistance(px, py, v1.x, v1.y, v2.x, v2.y);
+
+    if (result.dist < EDGE_HIT_DISTANCE && result.t > 0.1 && result.t < 0.9) {
+      return { edgeIndex: i, t: result.t, x: result.nearestX, y: result.nearestY };
+    }
+  }
+  return null;
+}
+
+function handleDoubleClick(px, py) {
+  if (shapeSelect.value() !== 'freeform') return false;
+
+  const anchorIndex = findAnchorAtPoint(px, py);
+  if (anchorIndex !== null) {
+    if (freeformVertices.length > 3) {
+      freeformVertices.splice(anchorIndex, 1);
+      return true;
+    }
+    return false;
+  }
+
+  const edge = findEdgeAtPoint(px, py);
+  if (edge !== null) {
+    freeformVertices.splice(edge.edgeIndex + 1, 0, { x: edge.x, y: edge.y });
+    return true;
+  }
+
+  return false;
+}
+
 function mousePressed() {
   if (mouseX < 0 || mouseX > CANVAS_SIZE || mouseY < 0 || mouseY > CANVAS_SIZE) return;
+
+  const now = millis();
+  const timeSinceLastClick = now - lastClickTime;
+  const distFromLastClick = dist(mouseX, mouseY, lastClickPos.x, lastClickPos.y);
+
+  if (timeSinceLastClick < DOUBLE_CLICK_TIME && distFromLastClick < 20) {
+    if (handleDoubleClick(mouseX, mouseY)) {
+      lastClickTime = 0;
+      return;
+    }
+  }
+
+  lastClickTime = now;
+  lastClickPos = { x: mouseX, y: mouseY };
   draggedAnchor = findAnchorAtPoint(mouseX, mouseY);
 }
 
@@ -240,6 +362,20 @@ function touchStarted() {
   if (touches.length === 0) return;
   const t = touches[0];
   if (t.x < 0 || t.x > CANVAS_SIZE || t.y < 0 || t.y > CANVAS_SIZE) return;
+
+  const now = millis();
+  const timeSinceLastClick = now - lastClickTime;
+  const distFromLastClick = dist(t.x, t.y, lastClickPos.x, lastClickPos.y);
+
+  if (timeSinceLastClick < DOUBLE_CLICK_TIME && distFromLastClick < 20) {
+    if (handleDoubleClick(t.x, t.y)) {
+      lastClickTime = 0;
+      return false;
+    }
+  }
+
+  lastClickTime = now;
+  lastClickPos = { x: t.x, y: t.y };
   draggedAnchor = findAnchorAtPoint(t.x, t.y);
   if (draggedAnchor !== null) return false;
 }
@@ -271,6 +407,12 @@ function handleAnchorDrag(mx, my) {
 
   if (anchor.role === 'arcStart' || anchor.role === 'arcStop') {
     handleArcAngleDrag(anchor.role, mx, my, x, y);
+    return;
+  }
+
+  if (anchor.role === 'freeformVertex') {
+    freeformVertices[anchor.index].x = mx;
+    freeformVertices[anchor.index].y = my;
     return;
   }
 
@@ -311,9 +453,6 @@ function handleArcAngleDrag(role, mx, my, cx, cy) {
 }
 
 function handleLineDrag(role, mx, my, cx, cy) {
-  const w = Number(dimW.value());
-  const h = Number(dimH.value());
-
   if (role === 'start') {
     const newW = (cx - mx) * 2;
     const newH = (cy - my) * 2;
