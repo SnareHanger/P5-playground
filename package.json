@@ -1,0 +1,15 @@
+{
+  "name": "p5-shape-editor",
+  "version": "1.0.0",
+  "description": "Interactive p5.js shape editor with draggable anchors",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "serve": "npx serve -l 3000"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "serve": "^14.2.0"
+  }
+}
