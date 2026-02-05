@@ -166,8 +166,14 @@ function getAnchors(shape, x, y, w, h) {
         { x: x, y: y, role: 'center' },
       ];
 
-    case 'freeform':
-      return freeformVertices.map((v, i) => ({ x: v.x, y: v.y, role: 'freeformVertex', index: i }));
+    case 'freeform': {
+      const cx = freeformVertices.reduce((s, v) => s + v.x, 0) / (freeformVertices.length || 1);
+      const cy = freeformVertices.reduce((s, v) => s + v.y, 0) / (freeformVertices.length || 1);
+      return [
+        { x: cx, y: cy, role: 'center' },
+        ...freeformVertices.map((v, i) => ({ x: v.x, y: v.y, role: 'freeformVertex', index: i })),
+      ];
+    }
 
     default:
       return [];
@@ -193,7 +199,13 @@ function draw() {
   anchors = getAnchors(shape, x, y, w, h);
   drawAnchors(anchors);
 
-  if (shape !== 'freeform') {
+  if (shape === 'freeform') {
+    if (freeformVertices.length > 0) {
+      const cx = freeformVertices.reduce((s, v) => s + v.x, 0) / freeformVertices.length;
+      const cy = freeformVertices.reduce((s, v) => s + v.y, 0) / freeformVertices.length;
+      drawCrosshair(cx, cy);
+    }
+  } else {
     drawCrosshair(x, y);
   }
 }
@@ -322,8 +334,10 @@ function handleDoubleClick(px, py) {
 
   const anchorIndex = findAnchorAtPoint(px, py);
   if (anchorIndex !== null) {
+    const anchor = anchors[anchorIndex];
+    if (anchor.role !== 'freeformVertex') return false;
     if (freeformVertices.length > 3) {
-      freeformVertices.splice(anchorIndex, 1);
+      freeformVertices.splice(anchor.index, 1);
       return true;
     }
     return false;
@@ -408,8 +422,17 @@ function handleAnchorDrag(mx, my) {
   my = constrain(my, 0, CANVAS_SIZE);
 
   if (anchor.role === 'center') {
-    updateSlider(posX, 'pos-x-val', mx);
-    updateSlider(posY, 'pos-y-val', my);
+    if (shape === 'freeform') {
+      const dx = mx - anchor.x;
+      const dy = my - anchor.y;
+      for (const v of freeformVertices) {
+        v.x += dx;
+        v.y += dy;
+      }
+    } else {
+      updateSlider(posX, 'pos-x-val', mx);
+      updateSlider(posY, 'pos-y-val', my);
+    }
     return;
   }
 
