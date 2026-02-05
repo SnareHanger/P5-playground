@@ -39,15 +39,21 @@ function wireSlider(sliderId, displayId, suffix = '') {
   });
 }
 
-function updateControlsVisibility() {
-  const shape = shapeSelect.value();
-  const dimensionsFieldset = document.getElementById('dimensions-fieldset');
-  const arcFieldset = document.getElementById('arc-fieldset');
-  const fillRow = document.getElementById('fill-row');
+const shapeControls = {
+  rectangle: { dimensions: true, arc: false, fill: true },
+  ellipse:   { dimensions: true, arc: false, fill: true },
+  triangle:  { dimensions: true, arc: false, fill: true },
+  quad:      { dimensions: true, arc: false, fill: true },
+  line:      { dimensions: true, arc: false, fill: false },
+  arc:       { dimensions: true, arc: true,  fill: true },
+  point:     { dimensions: false, arc: false, fill: false },
+};
 
-  dimensionsFieldset.style.display = shape === 'point' ? 'none' : 'block';
-  arcFieldset.style.display = shape === 'arc' ? 'block' : 'none';
-  fillRow.style.display = (shape === 'point' || shape === 'line') ? 'none' : 'flex';
+function updateControlsVisibility() {
+  const config = shapeControls[shapeSelect.value()];
+  document.getElementById('dimensions-fieldset').style.display = config.dimensions ? 'block' : 'none';
+  document.getElementById('arc-fieldset').style.display = config.arc ? 'block' : 'none';
+  document.getElementById('fill-row').style.display = config.fill ? 'flex' : 'none';
 }
 
 function draw() {
