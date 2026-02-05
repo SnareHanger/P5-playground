@@ -41,7 +41,7 @@
           </div>
         </fieldset>
 
-        <fieldset>
+        <fieldset id="dimensions-fieldset">
           <legend>Dimensions</legend>
           <div class="control-row">
             <label for="dim-w">Width</label>
@@ -55,9 +55,31 @@
           </div>
         </fieldset>
 
+        <fieldset id="arc-fieldset" style="display: none;">
+          <legend>Arc Angles</legend>
+          <div class="control-row">
+            <label for="arc-start">Start</label>
+            <input type="range" id="arc-start" min="0" max="360" value="0">
+            <span id="arc-start-val" class="value-display">0°</span>
+          </div>
+          <div class="control-row">
+            <label for="arc-stop">Stop</label>
+            <input type="range" id="arc-stop" min="0" max="360" value="225">
+            <span id="arc-stop-val" class="value-display">225°</span>
+          </div>
+          <div class="control-row">
+            <label for="arc-mode">Mode</label>
+            <select id="arc-mode">
+              <option value="PIE">Pie</option>
+              <option value="CHORD">Chord</option>
+              <option value="OPEN">Open</option>
+            </select>
+          </div>
+        </fieldset>
+
         <fieldset>
           <legend>Style</legend>
-          <div class="control-row">
+          <div class="control-row" id="fill-row">
             <label for="fill-color">Fill</label>
             <input type="color" id="fill-color" value="#4a90d9">
           </div>
