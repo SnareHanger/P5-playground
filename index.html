@@ -4,15 +4,27 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>p5.js Shape Editor</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+  <script src="p5.min.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="app">
-    <h1>p5.js Shape Editor</h1>
+    <div id="header">
+      <h1>p5.js Shape Editor</h1>
+      <div id="mode-toggle" role="tablist" aria-label="Editor mode">
+        <button id="mode-2d" class="mode-btn active" role="tab" aria-selected="true">2D</button>
+        <button id="mode-3d" class="mode-btn" role="tab" aria-selected="false">3D</button>
+      </div>
+    </div>
+
     <div id="main">
-      <div id="canvas-container"></div>
-      <div id="controls">
+      <div>
+        <div id="canvas-container"></div>
+        <p id="orbit-hint" class="hint-text" style="display: none;">Drag to orbit &middot; Scroll to zoom</p>
+      </div>
+
+      <!-- 2D Controls -->
+      <div id="controls-2d" class="controls">
         <fieldset>
           <legend>Shape</legend>
           <label for="shape-select">Primitive</label>
@@ -61,12 +73,12 @@
           <div class="control-row">
             <label for="arc-start">Start</label>
             <input type="range" id="arc-start" min="0" max="360" value="0">
-            <span id="arc-start-val" class="value-display">0°</span>
+            <span id="arc-start-val" class="value-display">0&deg;</span>
           </div>
           <div class="control-row">
             <label for="arc-stop">Stop</label>
             <input type="range" id="arc-stop" min="0" max="360" value="225">
-            <span id="arc-stop-val" class="value-display">225°</span>
+            <span id="arc-stop-val" class="value-display">225&deg;</span>
           </div>
           <div class="control-row">
             <label for="arc-mode">Mode</label>
@@ -100,8 +112,131 @@
           </div>
         </fieldset>
       </div>
+
+      <!-- 3D Controls -->
+      <div id="controls-3d" class="controls" style="display: none;">
+        <fieldset>
+          <legend>Shape</legend>
+          <label for="shape-select-3d">Primitive</label>
+          <select id="shape-select-3d">
+            <option value="box">Box</option>
+            <option value="sphere">Sphere</option>
+            <option value="cylinder">Cylinder</option>
+            <option value="cone">Cone</option>
+            <option value="torus">Torus</option>
+            <option value="plane">Plane</option>
+          </select>
+        </fieldset>
+
+        <fieldset>
+          <legend>Position</legend>
+          <div class="control-row">
+            <label for="pos-x-3d">X</label>
+            <input type="range" id="pos-x-3d" min="-200" max="200" value="0">
+            <span id="pos-x-3d-val" class="value-display">0</span>
+          </div>
+          <div class="control-row">
+            <label for="pos-y-3d">Y</label>
+            <input type="range" id="pos-y-3d" min="-200" max="200" value="0">
+            <span id="pos-y-3d-val" class="value-display">0</span>
+          </div>
+          <div class="control-row">
+            <label for="pos-z-3d">Z</label>
+            <input type="range" id="pos-z-3d" min="-200" max="200" value="0">
+            <span id="pos-z-3d-val" class="value-display">0</span>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Dimensions</legend>
+          <div class="control-row" id="dim1-3d-row">
+            <label for="dim1-3d" id="dim1-3d-label">Width</label>
+            <input type="range" id="dim1-3d" min="1" max="300" value="100">
+            <span id="dim1-3d-val" class="value-display">100</span>
+          </div>
+          <div class="control-row" id="dim2-3d-row">
+            <label for="dim2-3d" id="dim2-3d-label">Height</label>
+            <input type="range" id="dim2-3d" min="1" max="300" value="100">
+            <span id="dim2-3d-val" class="value-display">100</span>
+          </div>
+          <div class="control-row" id="dim3-3d-row">
+            <label for="dim3-3d" id="dim3-3d-label">Depth</label>
+            <input type="range" id="dim3-3d" min="1" max="300" value="100">
+            <span id="dim3-3d-val" class="value-display">100</span>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Rotation</legend>
+          <div class="control-row">
+            <label for="rot-x-3d">X</label>
+            <input type="range" id="rot-x-3d" min="0" max="360" value="0">
+            <span id="rot-x-3d-val" class="value-display">0&deg;</span>
+          </div>
+          <div class="control-row">
+            <label for="rot-y-3d">Y</label>
+            <input type="range" id="rot-y-3d" min="0" max="360" value="0">
+            <span id="rot-y-3d-val" class="value-display">0&deg;</span>
+          </div>
+          <div class="control-row">
+            <label for="rot-z-3d">Z</label>
+            <input type="range" id="rot-z-3d" min="0" max="360" value="0">
+            <span id="rot-z-3d-val" class="value-display">0&deg;</span>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Material</legend>
+          <label for="material-type-3d">Type</label>
+          <select id="material-type-3d">
+            <option value="normal">Normal</option>
+            <option value="ambient">Ambient</option>
+            <option value="specular">Specular</option>
+            <option value="emissive">Emissive</option>
+          </select>
+          <div class="control-row" id="material-color-3d-row" style="display: none;">
+            <label for="material-color-3d">Color</label>
+            <input type="color" id="material-color-3d" value="#4a90d9">
+          </div>
+          <div class="control-row" id="shininess-3d-row" style="display: none;">
+            <label for="shininess-3d">Shininess</label>
+            <input type="range" id="shininess-3d" min="1" max="200" value="50">
+            <span id="shininess-3d-val" class="value-display">50</span>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Lighting</legend>
+          <div class="control-row">
+            <label for="lighting-enabled-3d">Enable</label>
+            <input type="checkbox" id="lighting-enabled-3d" checked>
+          </div>
+          <div class="control-row">
+            <label for="ambient-color-3d">Ambient</label>
+            <input type="color" id="ambient-color-3d" value="#404040">
+          </div>
+          <div class="control-row">
+            <label for="directional-color-3d">Directional</label>
+            <input type="color" id="directional-color-3d" value="#ffffff">
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Style</legend>
+          <div class="control-row">
+            <label for="stroke-enabled-3d">Stroke</label>
+            <input type="checkbox" id="stroke-enabled-3d">
+          </div>
+          <div class="control-row" id="stroke-color-3d-row" style="display: none;">
+            <label for="stroke-color-3d">Color</label>
+            <input type="color" id="stroke-color-3d" value="#333333">
+          </div>
+        </fieldset>
+      </div>
     </div>
   </div>
+  <script src="sketch-2d.js"></script>
+  <script src="sketch-3d.js"></script>
   <script src="sketch.js"></script>
 </body>
 </html>
